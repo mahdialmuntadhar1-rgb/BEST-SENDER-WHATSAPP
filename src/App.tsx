@@ -156,9 +156,15 @@ export default function App() {
   const fetchCampaigns = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/campaigns`);
-      setCampaigns(res.data || []);
+      if (res && Array.isArray(res.data)) {
+        setCampaigns(res.data);
+      } else {
+        setCampaigns([]);
+        console.error("Campaigns API returned a non-array response:", res.data);
+      }
     } catch (err) {
       console.error("Failed loading campaigns list", err);
+      setCampaigns([]);
     }
   };
 
@@ -855,7 +861,7 @@ export default function App() {
                       </div>
 
                       <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50 max-h-[280px] overflow-y-auto">
-                        {activeCampaignData.feed && activeCampaignData.feed.length > 0 ? (
+                        {activeCampaignData && Array.isArray(activeCampaignData.feed) && activeCampaignData.feed.length > 0 ? (
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
                               <tr className="bg-slate-100 text-slate-600 border-b border-slate-200 font-bold uppercase tracking-wider text-[10px]">
@@ -956,7 +962,7 @@ export default function App() {
               </div>
 
               <div className="p-4">
-                {campaigns.length > 0 ? (
+                {Array.isArray(campaigns) && campaigns.length > 0 ? (
                   <div className="space-y-3">
                     {campaigns.map((c) => {
                       const totalSentOrFailed = (c.sent || 0) + (c.failed || 0);

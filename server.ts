@@ -27,7 +27,17 @@ let NABDA_API_KEY = process.env.NABDA_API_KEY || "sk_5487e268757e4c51af85df5f349
 let GLOBAL_DELAY_MS = 1000; // 1s default delay between messages to respect rate limits safely
 
 // ========== Database Setup ==========
-const db = new Database("campaigns.db");
+let db: Database.Database;
+try {
+  db = new Database("campaigns.db");
+  // Test write permission
+  db.exec("CREATE TABLE IF NOT EXISTS _permission_check (id INTEGER PRIMARY KEY)");
+  db.exec("DROP TABLE IF EXISTS _permission_check");
+} catch (err) {
+  console.warn("Could not write campaigns.db in active workspace directory, falling back to /tmp/campaigns.db to prevent connection blocks:", err);
+  db = new Database("/tmp/campaigns.db");
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS campaigns (
     id TEXT PRIMARY KEY,
@@ -124,7 +134,9 @@ async function startCampaignWorker() {
           .prepare("SELECT count(*) as count FROM messages WHERE campaign_id = ? AND status = 'pending'")
           .get(activeCampaign.id) as any;
 
-        if (pendingCount.count === 0) {
+        const countVal = pendingCount ? pendingCount.count : 0;
+
+        if (countVal === 0) {
           // Verify actual counts
           const stats = db
             .prepare(
@@ -136,8 +148,11 @@ async function startCampaignWorker() {
             )
             .get(activeCampaign.id) as any;
 
+          const finalSent = (stats && stats.sent) || 0;
+          const finalFailed = (stats && stats.failed) || 0;
+
           db.prepare("UPDATE campaigns SET status = 'completed', sent = ?, failed = ? WHERE id = ?")
-            .run(stats.sent || 0, stats.failed || 0, activeCampaign.id);
+            .run(finalSent, finalFailed, activeCampaign.id);
           
           console.log(`[Worker] Campaign ${activeCampaign.name} marked as COMPLETED.`);
         }
@@ -161,19 +176,20 @@ async function startCampaignWorker() {
         db.prepare("UPDATE campaigns SET sent = sent + 1 WHERE id = ?").run(activeCampaign.id);
       } else {
         const nextAttempts = nextMessage.attempts + 1;
+        const errStr = result.error || "Gateway reject";
         
         if (nextAttempts >= 2) {
           // Hard fail after 2 retries (safe to prevent excessive spam/drain)
           db.prepare(
             "UPDATE messages SET status = 'failed', attempts = ?, error = ? WHERE id = ?"
-          ).run(nextAttempts, result.error, nextMessage.id);
+          ).run(nextAttempts, errStr, nextMessage.id);
 
           db.prepare("UPDATE campaigns SET failed = failed + 1 WHERE id = ?").run(activeCampaign.id);
         } else {
           // Increment attempts, but keep state as pending to retry on next cycle
           db.prepare(
             "UPDATE messages SET attempts = ?, error = ? WHERE id = ?"
-          ).run(nextAttempts, result.error, nextMessage.id);
+          ).run(nextAttempts, errStr, nextMessage.id);
         }
       }
 
