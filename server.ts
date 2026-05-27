@@ -115,7 +115,7 @@ async function startCampaignWorker() {
         .prepare(
           "SELECT * FROM messages WHERE campaign_id = ? AND status = 'pending' ORDER BY id ASC LIMIT 1"
         )
-        .get() as any;
+        .get(activeCampaign.id) as any;
 
       if (!nextMessage) {
         // No pending messages for this running campaign. Let's see if there are failed messages
@@ -433,6 +433,22 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+
+    // Guaranteed HTML fallback in development to transform and serve index.html properly
+    app.use("*", async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith("/api")) {
+        return next();
+      }
+      try {
+        const htmlPath = path.resolve(process.cwd(), "index.html");
+        let template = fs.readFileSync(htmlPath, "utf-8");
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (err) {
+        next(err);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
