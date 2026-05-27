@@ -1,0 +1,6 @@
+{
+  "name": "NABDA Bulk WhatsApp Sender",
+  "description": "A high-performance campaign bulk messaging sender for NABDA with Governorate filtering, Arabic and Kurdish language routing, and real-time logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
