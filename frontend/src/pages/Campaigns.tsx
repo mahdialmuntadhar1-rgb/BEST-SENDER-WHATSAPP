@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Send, Play, Trash2, X, AlertCircle, CheckCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCampaigns, createCampaign, sendCampaign, processCampaign, deleteCampaign, pauseCampaign, getStoredCredentials, sendTestMessage, getContacts } from '../services/api';
+import { Plus, Send, Play, Trash2, X, AlertCircle, CheckCircle, Loader2, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { getCampaigns, createCampaign, sendCampaign, processCampaign, deleteCampaign, pauseCampaign, resumeCampaign, getStoredCredentials, sendTestMessage, getContacts } from '../services/api';
 import { PaginationMeta } from '../types';
+import { getStoredDelay, getStoredBatchSize } from './Settings';
+
+const IRAQI_GOVERNORATES = [
+  'Baghdad', 'Basra', 'Erbil', 'Duhok', 'Sulaymaniyah', 'Najaf', 'Karbala',
+  'Mosul', 'Kirkuk', 'Anbar', 'Diyala', 'Wasit', 'Maysan', 'Dhi Qar',
+  'Babil', 'Qadisiyah', 'Muthanna', 'Salah ad Din', 'Halabja', 'Zakho',
+];
 
 interface Campaign {
   id: number;
   name: string;
   message: string;
+  message_ar?: string;
+  message_ku?: string;
+  message_en?: string;
   status: string;
   total_recipients: number;
   sent_count: number;
@@ -29,8 +39,14 @@ const Campaigns: React.FC = () => {
   const [singleTestingCampaignId, setSingleTestingCampaignId] = useState<number | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: '', message: '', message_ar: '', message_ku: '', message_en: '' });
+  const [selectedGovs, setSelectedGovs] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [testLimit, setTestLimit] = useState(5); // Send to first N contacts for testing
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewCampaign, setPreviewCampaign] = useState<any>(null);
+  const [previewTab, setPreviewTab] = useState<'default' | 'arabic' | 'kurdish' | 'english'>('arabic');
+  const [pendingSendId, setPendingSendId] = useState<number | null>(null);
+  const [pendingSendLimit, setPendingSendLimit] = useState(false);
   const [pagination, setPagination] = useState<PaginationMeta>({
     page: 1,
     limit: 10,
@@ -93,6 +109,21 @@ const Campaigns: React.FC = () => {
     }
   };
 
+  const openPreview = (id: number, limitContacts: boolean) => {
+    const campaign = campaigns.find(c => c.id === id);
+    if (!campaign) return;
+    const creds = getStoredCredentials();
+    if (!creds.apiKey || !creds.instanceId) {
+      alert('Please set your Nabda credentials in Settings first');
+      return;
+    }
+    setPreviewCampaign(campaign);
+    setPreviewTab(campaign.message_ar ? 'arabic' : campaign.message_ku ? 'kurdish' : 'default');
+    setPendingSendId(id);
+    setPendingSendLimit(limitContacts);
+    setShowPreviewModal(true);
+  };
+
   const handleSend = async (id: number, limitContacts = false) => {
     const creds = getStoredCredentials();
     if (!creds.apiKey || !creds.instanceId) {
@@ -102,39 +133,52 @@ const Campaigns: React.FC = () => {
 
     const confirmMsg = limitContacts
       ? `Send to first ${testLimit} contacts only?`
-      : 'Are you sure you want to send this campaign to all contacts?';
+      : selectedGovs.length > 0
+        ? `Send to contacts in: ${selectedGovs.join(', ')}?`
+        : 'Send to ALL contacts?';
 
     if (!confirm(confirmMsg)) return;
 
     setSendingId(id);
+    setShowPreviewModal(false);
     try {
       // Step 1: Queue messages (API only, instant, crash-safe)
       let contactIds: string[] | undefined;
       if (limitContacts) {
-        // Fetch first N contacts and pass their IDs
         const contactsRes = await getContacts({ page: 1, limit: testLimit });
         contactIds = contactsRes.contacts.filter(c => c.id).map(c => c.id!.toString());
+      } else if (selectedGovs.length > 0) {
+        // Fetch contacts filtered by governorate
+        const all = await getContacts({ page: 1, limit: 10000 });
+        contactIds = all.contacts
+          .filter(c => c.id && c.governorate && selectedGovs.some(g => g.toLowerCase() === c.governorate!.toLowerCase()))
+          .map(c => c.id!.toString());
+        if (contactIds.length === 0) {
+          alert('No contacts found in selected governorates.');
+          setSendingId(null);
+          return;
+        }
       }
+
+      const batchSize = getStoredBatchSize();
+      const delayMs = getStoredDelay();
 
       const queueRes = await sendCampaign(id.toString(), creds.apiKey, creds.instanceId, false, contactIds);
       alert(`Queued ${queueRes.queued_count} messages. Starting send...`);
       loadCampaigns();
 
-      // Step 2: Process queued messages (worker layer)
-      let hasMore = true;
-      let totalSent = 0;
-      let totalFailed = 0;
-      while (hasMore) {
-        const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, 1500, limitContacts ? testLimit : 100);
-        totalSent += processRes.sent || 0;
-        totalFailed += processRes.failed || 0;
-        hasMore = processRes.has_more;
-        if (hasMore) {
-          loadCampaigns(); // Refresh UI to show progress
-        }
-      }
+      // Step 2: Process one batch then stop (auto-pause after batch)
+      const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, delayMs, batchSize === 0 ? 9999 : batchSize);
+      const totalSent = processRes.sent || 0;
+      const totalFailed = processRes.failed || 0;
+      const hasMore = processRes.has_more;
 
-      alert(`Campaign complete! ${totalSent} sent, ${totalFailed} failed`);
+      if (hasMore && batchSize > 0) {
+        await pauseCampaign(id.toString());
+        alert(`Batch done! ${totalSent} sent, ${totalFailed} failed.\nCampaign paused after batch of ${batchSize}. Click Resume to continue.`);
+      } else {
+        alert(`Campaign complete! ${totalSent} sent, ${totalFailed} failed`);
+      }
       loadCampaigns();
     } catch (e: any) {
       alert(e.response?.data?.error || 'Failed to send campaign');
@@ -161,17 +205,20 @@ const Campaigns: React.FC = () => {
     }
     setSendingId(id);
     try {
-      let hasMore = true;
-      let totalSent = 0;
-      let totalFailed = 0;
-      while (hasMore) {
-        const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, 1500, 100);
-        totalSent += processRes.sent || 0;
-        totalFailed += processRes.failed || 0;
-        hasMore = processRes.has_more;
-        if (hasMore) loadCampaigns();
+      const batchSize = getStoredBatchSize();
+      const delayMs = getStoredDelay();
+      // First un-pause the campaign so it can process
+      await resumeCampaign(id.toString()).catch(() => {});
+      const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, delayMs, batchSize === 0 ? 9999 : batchSize);
+      const totalSent = processRes.sent || 0;
+      const totalFailed = processRes.failed || 0;
+      const hasMore = processRes.has_more;
+      if (hasMore && batchSize > 0) {
+        await pauseCampaign(id.toString());
+        alert(`Batch done! ${totalSent} sent, ${totalFailed} failed.\nPaused again. Click Resume for next batch.`);
+      } else {
+        alert(`Resumed! ${totalSent} sent, ${totalFailed} failed`);
       }
-      alert(`Resumed! ${totalSent} sent, ${totalFailed} failed`);
       loadCampaigns();
     } catch (e: any) {
       alert(e.response?.data?.error || 'Failed to resume campaign');
@@ -227,17 +274,32 @@ const Campaigns: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Campaigns</h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600">Test limit:</label>
             <input
               type="number"
               min="1"
-              max="50"
+              max="500"
               value={testLimit}
-              onChange={(e) => setTestLimit(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+              onChange={(e) => setTestLimit(Math.min(500, Math.max(1, parseInt(e.target.value) || 1)))}
               className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Governorate:</label>
+            <select
+              multiple
+              value={selectedGovs}
+              onChange={(e) => setSelectedGovs(Array.from(e.target.selectedOptions, o => o.value))}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm h-8 min-w-[130px]"
+              title="Hold Ctrl/Cmd to select multiple"
+            >
+              {IRAQI_GOVERNORATES.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+            {selectedGovs.length > 0 && (
+              <button onClick={() => setSelectedGovs([])} className="text-xs text-gray-400 hover:text-gray-600">✕ Clear</button>
+            )}
           </div>
           <button
             onClick={() => setShowModal(true)}
@@ -299,13 +361,13 @@ const Campaigns: React.FC = () => {
                     <span className="ml-1">Send 1 Test</span>
                   </button>
                   <button
-                    onClick={() => handleSend(c.id, true)}
+                    onClick={() => openPreview(c.id, true)}
                     disabled={sendingId === c.id || c.status === 'queued' || c.status === 'sending'}
                     className="flex items-center px-3 py-2 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-colors text-sm disabled:opacity-50"
-                    title={`Send to first ${testLimit} contacts`}
+                    title={`Preview & send to first ${testLimit} contacts`}
                   >
-                    {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    <span className="ml-1">Send {testLimit}</span>
+                    {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                    <span className="ml-1">Preview & Send {testLimit}</span>
                   </button>
                   {(c.status === 'queued' || c.status === 'sending') && (
                     <>
@@ -340,10 +402,10 @@ const Campaigns: React.FC = () => {
                     </button>
                   )}
                   <button
-                    onClick={() => handleSend(c.id)}
+                    onClick={() => openPreview(c.id, false)}
                     disabled={sendingId === c.id || c.status === 'queued' || c.status === 'sending'}
                     className="flex items-center px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm disabled:opacity-50"
-                    title="Send campaign"
+                    title="Preview & send campaign"
                   >
                     {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     <span className="ml-1">Send</span>
@@ -459,6 +521,69 @@ const Campaigns: React.FC = () => {
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => { setShowModal(false); setError(''); }} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
               <button onClick={handleCreate} className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700">Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Preview Modal */}
+      {showPreviewModal && previewCampaign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Preview: {previewCampaign.name}</h3>
+              <button onClick={() => setShowPreviewModal(false)}><X className="h-5 w-5 text-gray-500" /></button>
+            </div>
+
+            {/* Language tabs */}
+            <div className="flex gap-1 mb-3 border-b border-gray-200">
+              {['arabic', 'kurdish', 'english', 'default'].map((tab) => {
+                const hasMsg = tab === 'arabic' ? previewCampaign.message_ar
+                  : tab === 'kurdish' ? previewCampaign.message_ku
+                  : tab === 'english' ? previewCampaign.message_en
+                  : previewCampaign.message;
+                if (!hasMsg && tab !== 'default') return null;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setPreviewTab(tab as any)}
+                    className={`px-4 py-2 text-sm capitalize border-b-2 transition-colors ${
+                      previewTab === tab
+                        ? 'border-primary-600 text-primary-700 font-medium'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab === 'default' ? '🌐 Default' : tab === 'arabic' ? '🇮🇶 Arabic' : tab === 'kurdish' ? '🏔️ Kurdish' : '🇬🇧 English'}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Message preview */}
+            <div className={`bg-gray-50 rounded-lg p-4 mb-4 min-h-[100px] text-sm whitespace-pre-wrap ${
+              previewTab === 'arabic' || previewTab === 'kurdish' ? 'text-right font-arabic' : ''
+            }`} dir={previewTab === 'arabic' || previewTab === 'kurdish' ? 'rtl' : 'ltr'}>
+              {previewTab === 'arabic' ? previewCampaign.message_ar
+                : previewTab === 'kurdish' ? previewCampaign.message_ku
+                : previewTab === 'english' ? previewCampaign.message_en
+                : previewCampaign.message}
+            </div>
+
+            <div className="text-xs text-gray-500 mb-4 bg-blue-50 rounded p-2">
+              <strong>ℹ️ Sending config:</strong> Batch size: {getStoredBatchSize() === 0 ? 'All' : getStoredBatchSize()} | Delay: {getStoredDelay()}ms
+              {selectedGovs.length > 0 && <> | Governorates: {selectedGovs.join(', ')}</>}
+              {pendingSendLimit && <> | Limited to first {testLimit} contacts</>}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowPreviewModal(false)} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
+              <button
+                onClick={() => handleSend(pendingSendId!, pendingSendLimit)}
+                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center gap-2"
+              >
+                <Send className="h-4 w-4" />
+                Confirm & Send
+              </button>
             </div>
           </div>
         </div>

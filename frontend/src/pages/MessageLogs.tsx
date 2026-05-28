@@ -6,6 +6,7 @@ import { PaginationMeta } from '../types';
 interface MessageLog {
   id: number;
   campaign_id?: number;
+  campaign_name?: string;
   recipient: string;
   message: string;
   status: 'queued' | 'pending' | 'sending' | 'sent' | 'delivered' | 'failed';
@@ -30,6 +31,7 @@ const MessageLogs: React.FC = () => {
     status: '',
     recipient: '',
   });
+  const [search, setSearch] = useState('');
 
   const loadLogs = async () => {
     setLoading(true);
@@ -37,7 +39,7 @@ const MessageLogs: React.FC = () => {
       const params: any = { page: pagination.page, limit: pagination.limit };
       if (filters.campaign_id) params.campaign_id = filters.campaign_id;
       if (filters.status) params.status = filters.status;
-      if (filters.recipient) params.recipient = filters.recipient;
+      if (filters.recipient || search) params.recipient = filters.recipient || search;
 
       const res: any = await getMessageLogs(params);
       setLogs(Array.isArray(res) ? res : res.logs || []);
@@ -87,18 +89,28 @@ const MessageLogs: React.FC = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
+        <div className="flex gap-3 items-end flex-wrap">
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Search Phone</label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="+964..."
+            />
+          </div>
+          <div className="flex-1 min-w-[150px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">Campaign ID</label>
             <input
               type="text"
               value={filters.campaign_id}
               onChange={(e) => setFilters({ ...filters, campaign_id: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Filter by campaign ID"
+              placeholder="e.g. 12"
             />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-[150px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select
               value={filters.status}
@@ -114,18 +126,8 @@ const MessageLogs: React.FC = () => {
               <option value="failed">Failed</option>
             </select>
           </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Recipient</label>
-            <input
-              type="text"
-              value={filters.recipient}
-              onChange={(e) => setFilters({ ...filters, recipient: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Filter by phone number"
-            />
-          </div>
           <button
-            onClick={() => setFilters({ campaign_id: '', status: '', recipient: '' })}
+            onClick={() => { setFilters({ campaign_id: '', status: '', recipient: '' }); setSearch(''); }}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
           >
             Clear
@@ -168,23 +170,27 @@ const MessageLogs: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipient</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent At</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipient</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaign</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sent At</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {logs.map((log) => (
                 <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">{statusBadge(log.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{log.recipient}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{log.message}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.campaign_id || '-'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.sent_at ? new Date(log.sent_at).toLocaleString() : '-'}</td>
-                  <td className="px-6 py-4 text-sm text-red-600">{log.error || '-'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{statusBadge(log.status)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">{log.recipient}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    {log.campaign_name ? (
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">{log.campaign_name}</span>
+                    ) : log.campaign_id ? `#${log.campaign_id}` : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate" title={log.message}>{log.message}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{log.sent_at ? new Date(log.sent_at).toLocaleString() : '-'}</td>
+                  <td className="px-4 py-3 text-sm text-red-600 max-w-xs truncate" title={log.error}>{log.error || '-'}</td>
                 </tr>
               ))}
             </tbody>

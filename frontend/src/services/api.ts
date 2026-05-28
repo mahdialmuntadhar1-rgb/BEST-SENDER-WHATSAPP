@@ -71,6 +71,11 @@ export const pauseCampaign = async (id: string): Promise<any> => {
   return response.data;
 };
 
+export const resumeCampaign = async (id: string): Promise<any> => {
+  const response = await api.post(`/campaigns/${id}/resume`);
+  return response.data;
+};
+
 export const sendCampaign = async (
   id: string,
   apiKey?: string,
