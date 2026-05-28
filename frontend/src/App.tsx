@@ -6,6 +6,7 @@ import Campaigns from './pages/Campaigns';
 import Contacts from './pages/Contacts';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
+import MessageLogs from './pages/MessageLogs';
 
 const App: React.FC = () => {
   return (
@@ -16,6 +17,7 @@ const App: React.FC = () => {
           <Route path="campaigns" element={<Campaigns />} />
           <Route path="contacts" element={<Contacts />} />
           <Route path="templates" element={<Templates />} />
+          <Route path="message-logs" element={<MessageLogs />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />

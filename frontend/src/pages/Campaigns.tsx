@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Send, Play, Trash2, X, AlertCircle, CheckCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCampaigns, createCampaign, sendCampaign, processCampaign, processAllQueued, deleteCampaign, getStoredCredentials, sendTestMessage } from '../services/api';
+import { getCampaigns, createCampaign, sendCampaign, processCampaign, deleteCampaign, getStoredCredentials, sendTestMessage } from '../services/api';
 import { PaginationMeta } from '../types';
 
 interface Campaign {
@@ -30,6 +30,7 @@ const Campaigns: React.FC = () => {
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: '', message: '' });
   const [error, setError] = useState('');
+  const [testLimit, setTestLimit] = useState(5); // Send to first N contacts for testing
   const [pagination, setPagination] = useState<PaginationMeta>({
     page: 1,
     limit: 10,
@@ -89,13 +90,18 @@ const Campaigns: React.FC = () => {
     }
   };
 
-  const handleSend = async (id: number) => {
+  const handleSend = async (id: number, limitContacts = false) => {
     const creds = getStoredCredentials();
     if (!creds.apiKey || !creds.instanceId) {
       alert('Please set your Nabda credentials in Settings first');
       return;
     }
-    if (!confirm('Are you sure you want to send this campaign to all contacts?')) return;
+
+    const confirmMsg = limitContacts
+      ? `Send to first ${testLimit} contacts only?`
+      : 'Are you sure you want to send this campaign to all contacts?';
+
+    if (!confirm(confirmMsg)) return;
 
     setSendingId(id);
     try {
@@ -109,7 +115,7 @@ const Campaigns: React.FC = () => {
       let totalSent = 0;
       let totalFailed = 0;
       while (hasMore) {
-        const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, 1500, 100);
+        const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, 1500, limitContacts ? testLimit : 100);
         totalSent += processRes.sent || 0;
         totalFailed += processRes.failed || 0;
         hasMore = processRes.has_more;
@@ -200,13 +206,26 @@ const Campaigns: React.FC = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Campaigns</h2>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          New Campaign
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Test limit:</label>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={testLimit}
+              onChange={(e) => setTestLimit(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+              className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+            />
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            New Campaign
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -257,6 +276,15 @@ const Campaigns: React.FC = () => {
                   >
                     {singleTestingCampaignId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     <span className="ml-1">Send 1 Test</span>
+                  </button>
+                  <button
+                    onClick={() => handleSend(c.id, true)}
+                    disabled={sendingId === c.id || c.status === 'queued' || c.status === 'sending'}
+                    className="flex items-center px-3 py-2 bg-purple-50 text-purple-600 rounded-md hover:bg-purple-100 transition-colors text-sm disabled:opacity-50"
+                    title={`Send to first ${testLimit} contacts`}
+                  >
+                    {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    <span className="ml-1">Send {testLimit}</span>
                   </button>
                   {(c.status === 'queued' || c.status === 'sending') && (
                     <button

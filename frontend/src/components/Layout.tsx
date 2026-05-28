@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Home, MessageSquare, Users, FileText, Settings } from 'lucide-react';
+import { Home, MessageSquare, Users, FileText, Settings, ListChecks } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -9,6 +9,7 @@ const Layout: React.FC = () => {
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/campaigns', label: 'Campaigns', icon: MessageSquare },
     { path: '/contacts', label: 'Contacts', icon: Users },
+    { path: '/message-logs', label: 'Message Logs', icon: ListChecks },
     { path: '/templates', label: 'Templates', icon: FileText },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
