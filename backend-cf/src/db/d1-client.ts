@@ -338,7 +338,7 @@ export class D1Client {
 
     await this.db.prepare(
       `INSERT INTO campaigns (name, message, message_ar, message_ku, message_en, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       data.name,
       data.message,
