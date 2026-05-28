@@ -371,7 +371,7 @@ export class D1Client {
 
     const [campaignsResult, countResult] = await Promise.all([
       this.db.prepare(
-        'SELECT * FROM campaigns ORDER BY created_at DESC LIMIT ? OFFSET ?'
+        'SELECT id, name, message, message_ar, message_ku, message_en, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at FROM campaigns ORDER BY created_at DESC LIMIT ? OFFSET ?'
       ).bind(limit, offset).all(),
       this.db.prepare('SELECT COUNT(*) as count FROM campaigns').first()
     ]);
@@ -387,7 +387,7 @@ export class D1Client {
   }
 
   async getCampaignById(id: string): Promise<Campaign | null> {
-    const result = await this.db.prepare('SELECT * FROM campaigns WHERE id = ?').bind(id).first();
+    const result = await this.db.prepare('SELECT id, name, message, message_ar, message_ku, message_en, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at FROM campaigns WHERE id = ?').bind(id).first();
     return result as Campaign | null;
   }
 
