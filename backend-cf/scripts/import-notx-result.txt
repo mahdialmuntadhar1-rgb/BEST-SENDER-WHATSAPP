@@ -1,0 +1,52 @@
+
+ ⛅️ wrangler 4.95.0
+───────────────────
+Resource location: remote 
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1m⚠️ This process may take some time, during which your D1 database will be unavailable to serve queries.[0m
+
+
+🌀 Executing on remote database nabda-bulk-whatsapp-db (ddd3f9e0-bd0f-4b91-a45d-4ad8158ea895):
+🌀 To execute on your local development database, remove the --remote flag from your wrangler command.
+Note: if the execution fails to complete, your DB will return to its original state and you can safely retry.
+├ Checking if file needs uploading
+│
+├ 🌀 Uploading ddd3f9e0-bd0f-4b91-a45d-4ad8158ea895.9c404d0003e6a4ac.sql
+│ 🌀 Uploading complete.
+│
+🌀 Starting import...
+🌀 Processed 11 queries.
+🚣 Executed 11 queries in 24.22ms (21 rows read, 2521 rows written)
+   Database is currently at bookmark 00000006-00000012-00005078-c70fcbe97c5d5073c81689c20f04f6e6.
+[
+  {
+    "results": [
+      {
+        "Total queries executed": 11,
+        "Rows read": 21,
+        "Rows written": 2521,
+        "Database size (MB)": "0.39"
+      }
+    ],
+    "success": true,
+    "finalBookmark": "00000006-00000012-00005078-c70fcbe97c5d5073c81689c20f04f6e6",
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "EEUR",
+      "served_by_colo": "MXP",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 24.2224
+      },
+      "duration": 24.2224,
+      "changes": 503,
+      "last_row_id": 502,
+      "changed_db": true,
+      "size_after": 393216,
+      "rows_read": 21,
+      "rows_written": 2521,
+      "num_tables": 8,
+      "total_attempts": 1
+    }
+  }
+]

@@ -1,22 +1,13 @@
 import axios from 'axios';
-import { Contact, Campaign, Template, MessageLog, HealthResponse, GovernorateCount, PaginationMeta } from '../types';
+import { Contact, Campaign, Template, HealthResponse, GovernorateCount, PaginationMeta } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://nabda-bulk-whatsapp.mahdialmuntadhar1.workers.dev/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
 });
 
 // Health Check
@@ -31,7 +22,7 @@ export const getContacts = async (params?: any): Promise<{ contacts: Contact[]; 
   return response.data;
 };
 
-export const createContact = async (contact: Omit<Contact, '_id' | 'createdAt' | 'updatedAt'>): Promise<Contact> => {
+export const createContact = async (contact: Omit<Contact, 'id' | 'created_at' | 'updated_at'>): Promise<Contact> => {
   const response = await api.post('/contacts', contact);
   return response.data;
 };
@@ -56,12 +47,12 @@ export const getGovernorateCounts = async (): Promise<{ counts: GovernorateCount
 };
 
 // Campaigns
-export const getCampaigns = async (): Promise<Campaign[]> => {
-  const response = await api.get('/campaigns');
+export const getCampaigns = async (params?: { page?: number; limit?: number }): Promise<any> => {
+  const response = await api.get('/campaigns', { params });
   return response.data;
 };
 
-export const createCampaign = async (campaign: Omit<Campaign, '_id' | 'createdAt' | 'updatedAt'>): Promise<Campaign> => {
+export const createCampaign = async (campaign: Omit<Campaign, 'id' | 'created_at' | 'updated_at'>): Promise<Campaign> => {
   const response = await api.post('/campaigns', campaign);
   return response.data;
 };
@@ -75,18 +66,25 @@ export const deleteCampaign = async (id: string): Promise<void> => {
   await api.delete(`/campaigns/${id}`);
 };
 
-export const sendCampaign = async (id: string): Promise<Campaign> => {
-  const response = await api.post(`/campaigns/${id}/send`);
+export const sendCampaign = async (
+  id: string,
+  apiKey?: string,
+  instanceId?: string,
+  dryRun = false,
+  delayMs?: number,
+  contactIds?: string[]
+): Promise<any> => {
+  const response = await api.post(`/campaigns/${id}/send`, { apiKey, instanceId, dryRun, delayMs, contactIds });
   return response.data;
 };
 
 // Templates
-export const getTemplates = async (): Promise<Template[]> => {
-  const response = await api.get('/templates');
+export const getTemplates = async (params?: { page?: number; limit?: number }): Promise<any> => {
+  const response = await api.get('/templates', { params });
   return response.data;
 };
 
-export const createTemplate = async (template: Omit<Template, '_id' | 'createdAt' | 'updatedAt'>): Promise<Template> => {
+export const createTemplate = async (template: Omit<Template, 'id' | 'created_at' | 'updated_at'>): Promise<Template> => {
   const response = await api.post('/templates', template);
   return response.data;
 };
@@ -101,61 +99,62 @@ export const deleteTemplate = async (id: string): Promise<void> => {
 };
 
 // Message Logs
-export const getMessageLogs = async (campaignId?: string): Promise<MessageLog[]> => {
-  const params = campaignId ? { campaignId } : {};
+export const getMessageLogs = async (params?: { campaign_id?: string; status?: string; page?: number; limit?: number }): Promise<any> => {
   const response = await api.get('/message-logs', { params });
   return response.data;
 };
 
-// Auth
-export const nabdaLogin = async (email: string, password: string): Promise<{ success: boolean; user: any; token: string }> => {
-  const response = await api.post('/auth/nabda/login', { email, password });
+export const getMessageLogById = async (id: string): Promise<any> => {
+  const response = await api.get(`/message-logs/${id}`);
   return response.data;
 };
 
-export const getInstanceInfo = async (): Promise<any> => {
-  const response = await api.get('/auth/nabda/instance');
+export const updateMessageLogStatus = async (id: string, status: string, data?: any): Promise<any> => {
+  const response = await api.put(`/message-logs/${id}/status`, { status, ...data });
   return response.data;
 };
 
-export const selectInstance = async (instanceId: string): Promise<any> => {
-  const response = await api.post('/auth/nabda/select-instance', { instanceId });
+// Instance Config (stored in localStorage)
+export const getStoredCredentials = () => {
+  return {
+    apiKey: localStorage.getItem('nabda_api_key') || '',
+    instanceId: localStorage.getItem('nabda_instance_id') || '',
+  };
+};
+
+export const setStoredCredentials = (apiKey: string, instanceId: string) => {
+  localStorage.setItem('nabda_api_key', apiKey);
+  localStorage.setItem('nabda_instance_id', instanceId);
+};
+
+// Nabda API (requires credentials)
+export const sendTestMessage = async (phone: string, message: string, apiKey: string, instanceId: string): Promise<any> => {
+  const response = await api.post('/nabda/send-test', { phone, message, apiKey, instanceId });
   return response.data;
 };
 
-export const getInstances = async (): Promise<any> => {
-  const response = await api.get('/auth/nabda/instances');
+export const sendWhatsAppMessage = async (to: string, message: string, apiKey: string, instanceId: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+  const response = await api.post('/nabda/send', { phone: to, message, apiKey, instanceId });
   return response.data;
 };
 
-export const getBundles = async (): Promise<any> => {
-  const response = await api.get('/auth/nabda/bundles');
+export const sendOTP = async (to: string, purpose: string, apiKey: string, instanceId: string, templateName?: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+  const response = await api.post('/nabda/otp', { phone: to, purpose, templateName, apiKey, instanceId });
   return response.data;
 };
 
-export const logout = async (): Promise<any> => {
-  const response = await api.post('/auth/logout');
+export const getNabdaBalance = async (apiKey: string, instanceId: string): Promise<any> => {
+  const response = await api.get('/nabda/balance', { params: { apiKey, instanceId } });
   return response.data;
 };
 
-// Nabda API
-export const sendWhatsAppMessage = async (to: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  const response = await api.post('/nabda/send', { to, message });
+export const getNabdaTemplates = async (apiKey: string, instanceId: string): Promise<any[]> => {
+  const response = await api.get('/nabda/templates', { params: { apiKey, instanceId } });
   return response.data;
 };
 
-export const sendOTP = async (to: string, purpose: string, templateName?: string): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  const response = await api.post('/nabda/otp', { to, purpose, templateName });
-  return response.data;
-};
-
-export const getNabdaBalance = async (): Promise<{ balance: number; currency: string }> => {
-  const response = await api.get('/nabda/balance');
-  return response.data;
-};
-
-export const getNabdaTemplates = async (): Promise<any[]> => {
-  const response = await api.get('/nabda/templates');
+export const getNabdaStatus = async (apiKey: string, instanceId: string): Promise<any> => {
+  const response = await api.get('/nabda/status', { params: { apiKey, instanceId } });
   return response.data;
 };
 

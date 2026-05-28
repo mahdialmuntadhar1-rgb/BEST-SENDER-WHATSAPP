@@ -1,0 +1,50 @@
+name = "nabda-bulk-whatsapp"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "nabda-bulk-whatsapp-db"
+database_id = "ddd3f9e0-bd0f-4b91-a45d-4ad8158ea895"
+
+# R2 Bucket Binding
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "nabda-bulk-whatsapp-uploads"
+
+# KV Binding for rate limiting and caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "ef5f7d559cfc46baabd7ef5f0378b466"
+
+# Cloudflare Queues
+[[queues.producers]]
+binding = "MESSAGE_QUEUE"
+queue = "whatsapp-messages"
+
+# Durable Objects for job tracking
+[[durable_objects.bindings]]
+name = "JOB_STATUS"
+class_name = "JobStatus"
+
+# Durable Objects Migrations
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["JobStatus"]
+
+# Environment Variables (secrets should be set via wrangler secret)
+[vars]
+ENVIRONMENT = "production"
+CORS_ORIGIN = "https://your-frontend-domain.com"
+
+# Secrets (set via: wrangler secret put NABDA_API_KEY)
+# NABDA_API_KEY
+# NABDA_API_BASE_URL
+# JWT_SECRET
+# ENCRYPTION_KEY
+
+# Development
+[env.development]
+vars = { ENVIRONMENT = "development", CORS_ORIGIN = "http://localhost:5173" }

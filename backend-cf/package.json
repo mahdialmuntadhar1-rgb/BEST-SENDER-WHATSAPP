@@ -1,0 +1,26 @@
+{
+  "name": "nabda-bulk-whatsapp",
+  "version": "1.0.0",
+  "description": "Bulk WhatsApp messaging system using Nabda OTP API on Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "d1:create": "wrangler d1 create nabda-bulk-whatsapp-db",
+    "d1:migrate": "wrangler d1 execute nabda-bulk-whatsapp-db --file=./migrations/001_initial.sql",
+    "d1:console": "wrangler d1 execute nabda-bulk-whatsapp-db --command",
+    "r2:create": "wrangler r2 bucket create nabda-bulk-whatsapp-uploads",
+    "kv:create": "wrangler kv namespace create CACHE",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "csv-parse": "6.2.1",
+    "typescript": "^5.3.3",
+    "wrangler": "4.95.0"
+  }
+}
