@@ -1,10 +1,9 @@
 import React from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, MessageSquare, Users, FileText, Settings, LogOut } from 'lucide-react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Home, MessageSquare, Users, FileText, Settings } from 'lucide-react';
 
 const Layout: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: Home },
@@ -13,12 +12,6 @@ const Layout: React.FC = () => {
     { path: '/templates', label: 'Templates', icon: FileText },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,15 +22,6 @@ const Layout: React.FC = () => {
             <div className="flex items-center">
               <MessageSquare className="h-8 w-8 text-primary-600" />
               <h1 className="ml-3 text-xl font-bold text-gray-900">Nabda Bulk WhatsApp</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleLogout}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <LogOut className="h-5 w-5 mr-2" />
-                Logout
-              </button>
             </div>
           </div>
         </div>

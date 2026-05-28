@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { healthCheck, getNabdaBalance } from '../services/api';
+import { healthCheck, getNabdaBalance, getStoredCredentials } from '../services/api';
 import { Activity, MessageSquare, Users, DollarSign } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
@@ -16,8 +16,11 @@ const Dashboard: React.FC = () => {
       }
 
       try {
-        const bal = await getNabdaBalance();
-        setBalance(bal);
+        const creds = getStoredCredentials();
+        if (creds.apiKey && creds.instanceId) {
+          const bal = await getNabdaBalance(creds.apiKey, creds.instanceId);
+          setBalance(bal);
+        }
       } catch (error) {
         console.error('Failed to load balance:', error);
       }

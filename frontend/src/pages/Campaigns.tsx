@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Send, Play, Trash2, X, AlertCircle, CheckCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCampaigns, createCampaign, sendCampaign, deleteCampaign, getStoredCredentials, sendTestMessage } from '../services/api';
+import { getCampaigns, createCampaign, sendCampaign, processCampaign, processAllQueued, deleteCampaign, getStoredCredentials, sendTestMessage } from '../services/api';
 import { PaginationMeta } from '../types';
 
 interface Campaign {
@@ -99,11 +99,56 @@ const Campaigns: React.FC = () => {
 
     setSendingId(id);
     try {
-      const res = await sendCampaign(id.toString(), creds.apiKey, creds.instanceId, false, 1500);
-      alert(`Campaign sent! ${res.stats?.sent || 0} sent, ${res.stats?.failed || 0} failed`);
+      // Step 1: Queue messages (API only, instant, crash-safe)
+      const queueRes = await sendCampaign(id.toString(), creds.apiKey, creds.instanceId, false);
+      alert(`Queued ${queueRes.queued_count} messages. Starting send...`);
+      loadCampaigns();
+
+      // Step 2: Process queued messages (worker layer)
+      let hasMore = true;
+      let totalSent = 0;
+      let totalFailed = 0;
+      while (hasMore) {
+        const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, 1500, 100);
+        totalSent += processRes.sent || 0;
+        totalFailed += processRes.failed || 0;
+        hasMore = processRes.has_more;
+        if (hasMore) {
+          loadCampaigns(); // Refresh UI to show progress
+        }
+      }
+
+      alert(`Campaign complete! ${totalSent} sent, ${totalFailed} failed`);
       loadCampaigns();
     } catch (e: any) {
       alert(e.response?.data?.error || 'Failed to send campaign');
+    } finally {
+      setSendingId(null);
+    }
+  };
+
+  const handleResume = async (id: number) => {
+    const creds = getStoredCredentials();
+    if (!creds.apiKey || !creds.instanceId) {
+      alert('Please set your Nabda credentials in Settings first');
+      return;
+    }
+    setSendingId(id);
+    try {
+      let hasMore = true;
+      let totalSent = 0;
+      let totalFailed = 0;
+      while (hasMore) {
+        const processRes = await processCampaign(id.toString(), creds.apiKey, creds.instanceId, 1500, 100);
+        totalSent += processRes.sent || 0;
+        totalFailed += processRes.failed || 0;
+        hasMore = processRes.has_more;
+        if (hasMore) loadCampaigns();
+      }
+      alert(`Resumed! ${totalSent} sent, ${totalFailed} failed`);
+      loadCampaigns();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to resume campaign');
     } finally {
       setSendingId(null);
     }
@@ -143,6 +188,7 @@ const Campaigns: React.FC = () => {
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-700',
+      queued: 'bg-blue-100 text-blue-700',
       sending: 'bg-yellow-100 text-yellow-700',
       completed: 'bg-green-100 text-green-700',
       failed: 'bg-red-100 text-red-700',
@@ -212,9 +258,20 @@ const Campaigns: React.FC = () => {
                     {singleTestingCampaignId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     <span className="ml-1">Send 1 Test</span>
                   </button>
+                  {(c.status === 'queued' || c.status === 'sending') && (
+                    <button
+                      onClick={() => handleResume(c.id)}
+                      disabled={sendingId === c.id}
+                      className="flex items-center px-3 py-2 bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition-colors text-sm disabled:opacity-50"
+                      title="Resume sending"
+                    >
+                      {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                      <span className="ml-1">Resume</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => handleSend(c.id)}
-                    disabled={sendingId === c.id || c.status === 'sending'}
+                    disabled={sendingId === c.id || c.status === 'queued' || c.status === 'sending'}
                     className="flex items-center px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors text-sm disabled:opacity-50"
                     title="Send campaign"
                   >

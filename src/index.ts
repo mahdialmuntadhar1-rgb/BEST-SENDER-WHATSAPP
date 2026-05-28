@@ -4,13 +4,9 @@ import { logger } from 'hono/logger';
 import { Env } from './middleware/auth';
 import contacts from './routes/contacts';
 import campaigns from './routes/campaigns';
-import templates from './routes/templates';
 import uploads from './routes/uploads';
 import auth from './routes/auth';
-import nabda from './routes/nabda';
-import messageLogs from './routes/message-logs';
-import worker from './routes/worker';
-import shakuAuth from './routes/shaku-auth';
+import businesses from './routes/businesses';
 import { JobStatus } from './durable-objects/job-status';
 
 export { JobStatus };
@@ -36,13 +32,9 @@ app.get('/api/health', (c) => {
 // Routes
 app.route('/api/contacts', contacts);
 app.route('/api/campaigns', campaigns);
-app.route('/api/templates', templates);
 app.route('/api/uploads', uploads);
 app.route('/api/auth', auth);
-app.route('/api/nabda', nabda);
-app.route('/api/message-logs', messageLogs);
-app.route('/api/worker', worker);
-app.route('/api/shaku-auth', shakuAuth);
+app.route('/api/businesses', businesses);
 
 // 404 handler
 app.notFound((c) => {

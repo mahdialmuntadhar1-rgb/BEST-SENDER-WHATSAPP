@@ -36,7 +36,7 @@ export interface Campaign {
   name: string;
   message: string;
   template_id?: string;
-  status: 'draft' | 'scheduled' | 'queued' | 'sending' | 'completed' | 'failed';
+  status: 'draft' | 'scheduled' | 'sending' | 'completed' | 'failed';
   scheduled_at?: string;
   sent_at?: string;
   completed_at?: string;
@@ -64,9 +64,9 @@ export interface MessageLog {
   campaign_id?: string;
   recipient: string;
   message: string;
-  status: 'queued' | 'pending' | 'sending' | 'sent' | 'delivered' | 'failed';
+  status: 'pending' | 'sent' | 'delivered' | 'failed';
   nabda_message_id?: string;
-  error?: string;
+  error_message?: string;
   sent_at?: string;
   delivered_at?: string;
   created_at: string;
@@ -120,12 +120,14 @@ export class D1Client {
 
   // ==================== USERS ====================
   async createUser(data: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<User> {
+    const id = this.generateId();
     const now = new Date().toISOString();
-
+    
     await this.db.prepare(
-      `INSERT INTO users (email, password_hash, nabda_api_key, nabda_instance_id, nabda_bundle_id, nabda_session_token, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO users (id, email, password_hash, nabda_api_key, nabda_instance_id, nabda_bundle_id, nabda_session_token, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
+      id,
       data.email,
       data.password_hash || null,
       data.nabda_api_key,
@@ -135,9 +137,6 @@ export class D1Client {
       now,
       now
     ).run();
-
-    const row = await this.db.prepare('SELECT id FROM users WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
 
     return { ...data, id, created_at: now, updated_at: now };
   }
@@ -184,12 +183,14 @@ export class D1Client {
 
   // ==================== CONTACTS ====================
   async createContact(data: Omit<Contact, 'id' | 'created_at' | 'updated_at'>): Promise<Contact> {
+    const id = this.generateId();
     const now = new Date().toISOString();
-
+    
     await this.db.prepare(
-      `INSERT INTO contacts (name, phone, email, category, governorate, language, tags, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO contacts (id, name, phone, email, category, governorate, language, tags, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
+      id,
       data.name,
       data.phone,
       data.email || null,
@@ -200,9 +201,6 @@ export class D1Client {
       now,
       now
     ).run();
-
-    const row = await this.db.prepare('SELECT id FROM contacts WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
 
     return { ...data, id, created_at: now, updated_at: now };
   }
@@ -246,7 +244,7 @@ export class D1Client {
     const contacts = (contactsResult.results || []).map((row: any) => ({
       ...row,
       tags: this.parseJSON<string[]>(row.tags),
-    })) as unknown as Contact[];
+    })) as Contact[];
 
     return { contacts, total, pages };
   }
@@ -257,7 +255,7 @@ export class D1Client {
     return {
       ...result,
       tags: this.parseJSON<string[]>((result as any).tags),
-    } as unknown as Contact;
+    } as Contact;
   }
 
   async updateContact(id: string, data: Partial<Contact>): Promise<Contact | null> {
@@ -331,12 +329,14 @@ export class D1Client {
 
   // ==================== CAMPAIGNS ====================
   async createCampaign(data: Omit<Campaign, 'id' | 'created_at' | 'updated_at'>): Promise<Campaign> {
+    const id = this.generateId();
     const now = new Date().toISOString();
-
+    
     await this.db.prepare(
-      `INSERT INTO campaigns (name, message, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO campaigns (id, name, message, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
+      id,
       data.name,
       data.message,
       data.template_id || null,
@@ -351,9 +351,6 @@ export class D1Client {
       now,
       now
     ).run();
-
-    const row = await this.db.prepare('SELECT id FROM campaigns WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
 
     return { ...data, id, created_at: now, updated_at: now };
   }
@@ -374,7 +371,7 @@ export class D1Client {
     const pages = Math.ceil(total / limit);
 
     return {
-      campaigns: campaignsResult.results as unknown as Campaign[],
+      campaigns: campaignsResult.results as Campaign[],
       total,
       pages,
     };
@@ -434,12 +431,14 @@ export class D1Client {
 
   // ==================== IMPORT JOBS ====================
   async createImportJob(data: Omit<ImportJob, 'id' | 'created_at'>): Promise<ImportJob> {
+    const id = this.generateId();
     const now = new Date().toISOString();
-
+    
     await this.db.prepare(
-      `INSERT INTO import_jobs (user_id, file_name, file_key, total_rows, processed_rows, inserted_count, duplicate_count, error_count, status, duplicate_handling, error_details, started_at, completed_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO import_jobs (id, user_id, file_name, file_key, total_rows, processed_rows, inserted_count, duplicate_count, error_count, status, duplicate_handling, error_details, started_at, completed_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
+      id,
       data.user_id,
       data.file_name,
       data.file_key,
@@ -455,9 +454,6 @@ export class D1Client {
       data.completed_at || null,
       now
     ).run();
-
-    const row = await this.db.prepare('SELECT id FROM import_jobs WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
 
     return { ...data, id, created_at: now };
   }
@@ -528,236 +524,5 @@ export class D1Client {
       ...row,
       error_details: this.parseJSON<any>(row.error_details),
     })) as ImportJob[];
-  }
-
-  // ==================== TEMPLATES ====================
-  async createTemplate(data: Omit<Template, 'id' | 'created_at' | 'updated_at'>): Promise<Template> {
-    const now = new Date().toISOString();
-
-    await this.db.prepare(
-      `INSERT INTO templates (name, content, variables, category, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      data.name,
-      data.content,
-      data.variables || null,
-      data.category || null,
-      data.is_active !== undefined ? data.is_active : 1,
-      now,
-      now
-    ).run();
-
-    const row = await this.db.prepare('SELECT id FROM templates WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
-
-    return { ...data, id, created_at: now, updated_at: now };
-  }
-
-  async getTemplates(params: { page?: number; limit?: number }): Promise<{ templates: Template[]; total: number; pages: number }> {
-    const page = params.page || 1;
-    const limit = params.limit || 50;
-    const offset = (page - 1) * limit;
-
-    const [templatesResult, countResult] = await Promise.all([
-      this.db.prepare(
-        'SELECT * FROM templates WHERE is_active = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?'
-      ).bind(limit, offset).all(),
-      this.db.prepare('SELECT COUNT(*) as count FROM templates WHERE is_active = 1').first()
-    ]);
-
-    const total = (countResult as any)?.count || 0;
-    const pages = Math.ceil(total / limit);
-
-    return {
-      templates: (templatesResult.results || []) as unknown as Template[],
-      total,
-      pages,
-    };
-  }
-
-  async getTemplateById(id: string): Promise<Template | null> {
-    const result = await this.db.prepare('SELECT * FROM templates WHERE id = ?').bind(id).first();
-    return result as Template | null;
-  }
-
-  async updateTemplate(id: string, data: Partial<Template>): Promise<Template | null> {
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (data.name !== undefined) { updates.push('name = ?'); values.push(data.name); }
-    if (data.content !== undefined) { updates.push('content = ?'); values.push(data.content); }
-    if (data.variables !== undefined) { updates.push('variables = ?'); values.push(data.variables); }
-    if (data.category !== undefined) { updates.push('category = ?'); values.push(data.category); }
-    if (data.is_active !== undefined) { updates.push('is_active = ?'); values.push(data.is_active); }
-
-    if (updates.length === 0) return await this.getTemplateById(id);
-
-    updates.push('updated_at = ?');
-    values.push(new Date().toISOString());
-    values.push(id);
-
-    await this.db.prepare(
-      `UPDATE templates SET ${updates.join(', ')} WHERE id = ?`
-    ).bind(...values).run();
-
-    return await this.getTemplateById(id);
-  }
-
-  async deleteTemplate(id: string): Promise<boolean> {
-    const result = await this.db.prepare('DELETE FROM templates WHERE id = ?').bind(id).run();
-    return (result.meta?.changes || 0) > 0;
-  }
-
-  // ==================== MESSAGE LOGS ====================
-  async createMessageLog(data: Omit<MessageLog, 'id' | 'created_at'>): Promise<MessageLog> {
-    const now = new Date().toISOString();
-
-    await this.db.prepare(
-      `INSERT INTO message_logs (campaign_id, recipient, message, status, nabda_message_id, error, sent_at, delivered_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      data.campaign_id || null,
-      data.recipient,
-      data.message,
-      data.status || 'pending',
-      data.nabda_message_id || null,
-      data.error || null,
-      data.sent_at || null,
-      data.delivered_at || null,
-      now
-    ).run();
-
-    const row = await this.db.prepare('SELECT id FROM message_logs WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
-
-    return { ...data, id, created_at: now };
-  }
-
-  async getMessageLogs(params: { campaign_id?: string; status?: string; page?: number; limit?: number }): Promise<{ logs: MessageLog[]; total: number; pages: number }> {
-    const page = params.page || 1;
-    const limit = params.limit || 50;
-    const offset = (page - 1) * limit;
-
-    let whereClause = '1=1';
-    const values: any[] = [];
-
-    if (params.campaign_id) {
-      whereClause += ' AND campaign_id = ?';
-      values.push(params.campaign_id);
-    }
-
-    if (params.status) {
-      whereClause += ' AND status = ?';
-      values.push(params.status);
-    }
-
-    const [logsResult, countResult] = await Promise.all([
-      this.db.prepare(
-        `SELECT * FROM message_logs WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-      ).bind(...values, limit, offset).all(),
-      this.db.prepare(
-        `SELECT COUNT(*) as count FROM message_logs WHERE ${whereClause}`
-      ).bind(...values).first()
-    ]);
-
-    const total = (countResult as any)?.count || 0;
-    const pages = Math.ceil(total / limit);
-
-    return {
-      logs: (logsResult.results || []) as unknown as MessageLog[],
-      total,
-      pages,
-    };
-  }
-
-  async getMessageLogById(id: string): Promise<MessageLog | null> {
-    const result = await this.db.prepare('SELECT * FROM message_logs WHERE id = ?').bind(id).first();
-    return result as MessageLog | null;
-  }
-
-  async updateMessageLogStatus(id: string, status: MessageLog['status'], data?: { nabda_message_id?: string; error?: string; delivered_at?: string }): Promise<MessageLog | null> {
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    updates.push('status = ?');
-    values.push(status);
-
-    if (data?.nabda_message_id !== undefined) {
-      updates.push('nabda_message_id = ?');
-      values.push(data.nabda_message_id);
-    }
-
-    if (data?.error !== undefined) {
-      updates.push('error = ?');
-      values.push(data.error);
-    }
-
-    if (status === 'sent' && !data?.delivered_at) {
-      updates.push('sent_at = ?');
-      values.push(new Date().toISOString());
-    }
-
-    if (data?.delivered_at) {
-      updates.push('delivered_at = ?');
-      values.push(data.delivered_at);
-    }
-
-    values.push(id);
-
-    await this.db.prepare(
-      `UPDATE message_logs SET ${updates.join(', ')} WHERE id = ?`
-    ).bind(...values).run();
-
-    return await this.getMessageLogById(id);
-  }
-
-  // ==================== SHAKU USERS (billboard3dnakedeye-mor) ====================
-  async createShakuUser(data: { email: string; password_hash: string; display_name: string; photo_url?: string; role?: string; onboarded?: number; business_id?: number | null }): Promise<any> {
-    const now = new Date().toISOString();
-    await this.db.prepare(
-      `INSERT INTO shaku_users (email, password_hash, display_name, photo_url, role, onboarded, business_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      data.email,
-      data.password_hash,
-      data.display_name,
-      data.photo_url || null,
-      data.role || 'user',
-      data.onboarded !== undefined ? data.onboarded : 0,
-      data.business_id || null,
-      now,
-      now
-    ).run();
-    const row = await this.db.prepare('SELECT id FROM shaku_users WHERE rowid = last_insert_rowid()').first();
-    const id = String((row as any)?.id);
-    return { id, ...data, created_at: now, updated_at: now };
-  }
-
-  async getShakuUserByEmail(email: string): Promise<any | null> {
-    return await this.db.prepare('SELECT * FROM shaku_users WHERE email = ?').bind(email).first();
-  }
-
-  async getShakuUserById(id: string): Promise<any | null> {
-    return await this.db.prepare('SELECT * FROM shaku_users WHERE id = ?').bind(id).first();
-  }
-
-  async updateShakuUserPassword(email: string, passwordHash: string): Promise<void> {
-    await this.db.prepare(
-      'UPDATE shaku_users SET password_hash = ?, updated_at = ? WHERE email = ?'
-    ).bind(passwordHash, new Date().toISOString(), email).run();
-  }
-
-  async createPasswordReset(email: string, token: string, expiresAt: string): Promise<void> {
-    await this.db.prepare(
-      'INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)'
-    ).bind(email, token, expiresAt).run();
-  }
-
-  async getPasswordResetByToken(token: string): Promise<any | null> {
-    return await this.db.prepare('SELECT * FROM password_resets WHERE token = ?').bind(token).first();
-  }
-
-  async markPasswordResetUsed(token: string): Promise<void> {
-    await this.db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?').bind(token).run();
   }
 }

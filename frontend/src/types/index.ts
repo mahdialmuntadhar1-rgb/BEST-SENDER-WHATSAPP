@@ -23,7 +23,7 @@ export type Governorate =
   | 'Halabja';
 
 export interface Contact {
-  _id?: string;
+  id?: string;
   name: string;
   phone: string;
   email?: string;
@@ -31,34 +31,38 @@ export interface Contact {
   governorate?: Governorate;
   language?: Language;
   tags?: string[];
-  createdAt?: string;
-  updatedAt?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Campaign {
-  _id?: string;
+  id?: string;
   name: string;
   message: string;
-  templateId?: string;
+  template_id?: string;
   recipients: string[];
-  status: 'draft' | 'scheduled' | 'sending' | 'completed' | 'failed';
-  scheduledAt?: string;
-  sentAt?: string;
-  completedAt?: string;
-  stats: {
-    total: number;
-    sent: number;
-    failed: number;
-    pending: number;
-  };
-  createdAt?: string;
-  updatedAt?: string;
+  status: 'draft' | 'scheduled' | 'queued' | 'sending' | 'completed' | 'failed';
+  scheduled_at?: string;
+  sent_at?: string;
+  completed_at?: string;
+  total_recipients?: number;
+  sent_count?: number;
+  failed_count?: number;
+  pending_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Template {
-  _id?: string;
+  id?: string;
   name: string;
   content: string;
+  variables?: string;
+  category?: string;
+  is_active?: number;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export interface GovernorateCount {
   governorate: Governorate;
@@ -71,24 +75,18 @@ export interface PaginationMeta {
   total: number;
   pages: number;
 }
-  variables?: string[];
-  category?: string;
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 export interface MessageLog {
-  _id?: string;
-  campaignId?: string;
+  id?: string;
+  campaign_id?: string;
   recipient: string;
   message: string;
-  status: 'pending' | 'sent' | 'delivered' | 'failed';
-  nabdaMessageId?: string;
+  status: 'queued' | 'pending' | 'sending' | 'sent' | 'delivered' | 'failed';
+  nabda_message_id?: string;
   error?: string;
-  sentAt?: string;
-  deliveredAt?: string;
-  createdAt?: string;
+  sent_at?: string;
+  delivered_at?: string;
+  created_at?: string;
 }
 
 export interface HealthResponse {

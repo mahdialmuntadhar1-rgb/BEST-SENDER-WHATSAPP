@@ -88,7 +88,7 @@ const Contacts: React.FC = () => {
   };
 
   const handleSelectAllContacts = () => {
-    setSelectedContacts(contacts.map((c) => c._id!));
+    setSelectedContacts(contacts.map((c) => c.id!));
   };
 
   const handleClearSelection = () => {
@@ -252,12 +252,12 @@ const Contacts: React.FC = () => {
                 </tr>
               ) : (
                 contacts.map((contact) => (
-                  <tr key={contact._id} className="hover:bg-gray-50">
+                  <tr key={contact.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedContacts.includes(contact._id!)}
-                        onChange={() => handleSelectContact(contact._id!)}
+                        checked={selectedContacts.includes(contact.id!)}
+                        onChange={() => handleSelectContact(contact.id!)}
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 rounded"
                       />
                     </td>
@@ -271,7 +271,7 @@ const Contacts: React.FC = () => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteContact(contact._id!)}
+                          onClick={() => handleDeleteContact(contact.id!)}
                           className="text-gray-400 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />

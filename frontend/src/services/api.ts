@@ -71,10 +71,30 @@ export const sendCampaign = async (
   apiKey?: string,
   instanceId?: string,
   dryRun = false,
-  delayMs?: number,
   contactIds?: string[]
 ): Promise<any> => {
-  const response = await api.post(`/campaigns/${id}/send`, { apiKey, instanceId, dryRun, delayMs, contactIds });
+  const response = await api.post(`/campaigns/${id}/send`, { apiKey, instanceId, dryRun, contactIds });
+  return response.data;
+};
+
+export const processCampaign = async (
+  id: string,
+  apiKey: string,
+  instanceId: string,
+  delayMs = 1500,
+  batchSize = 100
+): Promise<any> => {
+  const response = await api.post(`/campaigns/${id}/process`, { apiKey, instanceId, delayMs, batchSize });
+  return response.data;
+};
+
+export const processAllQueued = async (
+  apiKey: string,
+  instanceId: string,
+  delayMs = 1500,
+  batchSize = 100
+): Promise<any> => {
+  const response = await api.post('/worker/process', { apiKey, instanceId, delayMs, batchSize });
   return response.data;
 };
 

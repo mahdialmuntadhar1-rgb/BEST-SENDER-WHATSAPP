@@ -6,7 +6,8 @@ import api from '../services/api';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [instanceId, setInstanceId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,7 +17,7 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      const response = await api.post('/auth/nabda/login', { email, password });
+      const response = await api.post('/auth/nabda/login', { email, apiKey, instanceId });
       
       if (response.data.success) {
         localStorage.setItem('token', response.data.token);
@@ -39,11 +40,11 @@ const Login: React.FC = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
             <LogIn className="h-8 w-8 text-primary-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Nabda Login</h1>
-          <p className="text-gray-600 mt-2">Sign in to access your dashboard</p>
+          <h1 className="text-2xl font-bold text-gray-900">Nabda OTP</h1>
+          <p className="text-gray-600 mt-2">Connect your WhatsApp instance</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               {error}
@@ -66,16 +67,31 @@ const Login: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+            <label htmlFor="instanceId" className="block text-sm font-medium text-gray-700 mb-2">
+              Instance ID
             </label>
             <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              id="instanceId"
+              type="text"
+              value={instanceId}
+              onChange={(e) => setInstanceId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="••••••••"
+              placeholder="4b56a3b6-..."
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700 mb-2">
+              API Key
+            </label>
+            <input
+              id="apiKey"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              placeholder="sk_..."
               required
             />
           </div>
@@ -85,12 +101,12 @@ const Login: React.FC = () => {
             disabled={loading}
             className="w-full flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Connecting...' : 'Connect Instance'}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Use your Nabda account credentials to login</p>
+          <p>Find your Instance ID and API Key in your Nabda OTP dashboard</p>
         </div>
       </div>
     </div>
