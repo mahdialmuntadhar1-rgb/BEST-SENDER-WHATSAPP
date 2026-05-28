@@ -1,6 +1,6 @@
 import { D1Database } from '@cloudflare/workers-types';
 
-export type Language = 'arabic' | 'sorani' | 'bahdini';
+export type Language = 'arabic' | 'kurdish' | 'sorani' | 'bahdini' | 'english';
 export type Governorate =
   | 'Baghdad' | 'Basra' | 'Erbil' | 'Duhok' | 'Zakho' | 'Sulaymaniyah'
   | 'Najaf' | 'Karbala' | 'Mosul' | 'Kirkuk' | 'Anbar' | 'Diyala' | 'Wasit'
@@ -35,6 +35,9 @@ export interface Campaign {
   id: string;
   name: string;
   message: string;
+  message_ar?: string;
+  message_ku?: string;
+  message_en?: string;
   template_id?: string;
   status: 'draft' | 'scheduled' | 'queued' | 'sending' | 'paused' | 'completed' | 'failed';
   scheduled_at?: string;
@@ -334,11 +337,14 @@ export class D1Client {
     const now = new Date().toISOString();
 
     await this.db.prepare(
-      `INSERT INTO campaigns (name, message, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO campaigns (name, message, message_ar, message_ku, message_en, template_id, status, scheduled_at, sent_at, completed_at, total_recipients, sent_count, failed_count, pending_count, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       data.name,
       data.message,
+      data.message_ar || null,
+      data.message_ku || null,
+      data.message_en || null,
       data.template_id || null,
       data.status,
       data.scheduled_at || null,

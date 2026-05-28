@@ -55,7 +55,7 @@ campaigns.post('/', async (c) => {
   const db = new D1Client(c.env.DB);
   const body = await c.req.json();
 
-  const { name, message, template_id, recipients } = body;
+  const { name, message, message_ar, message_ku, message_en, template_id, recipients } = body;
 
   if (!name || !message || !recipients) {
     return c.json({ error: 'Name, message, and recipients are required' }, 400);
@@ -64,6 +64,9 @@ campaigns.post('/', async (c) => {
   const campaign = await db.createCampaign({
     name,
     message,
+    message_ar,
+    message_ku,
+    message_en,
     template_id,
     status: 'draft',
     total_recipients: recipients.length,
@@ -158,11 +161,20 @@ campaigns.post('/:id/send', async (c) => {
   let queuedCount = 0;
   for (const contact of contacts) {
     const normalizedPhone = normalizePhoneNumber(contact.phone);
+    // Select message based on contact's language
+    let message = campaign.message;
+    if (contact.language === 'arabic' && campaign.message_ar) {
+      message = campaign.message_ar;
+    } else if (contact.language === 'kurdish' && campaign.message_ku) {
+      message = campaign.message_ku;
+    } else if (contact.language === 'english' && campaign.message_en) {
+      message = campaign.message_en;
+    }
     try {
       await db.createMessageLog({
         campaign_id: id,
         recipient: normalizedPhone,
-        message: campaign.message,
+        message: message,
         status: 'queued',
       });
       queuedCount++;

@@ -28,7 +28,7 @@ const Campaigns: React.FC = () => {
   const [singleTestResult, setSingleTestResult] = useState<any>(null);
   const [singleTestingCampaignId, setSingleTestingCampaignId] = useState<number | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: '', message: '' });
+  const [form, setForm] = useState({ name: '', message: '', message_ar: '', message_ku: '', message_en: '' });
   const [error, setError] = useState('');
   const [testLimit, setTestLimit] = useState(5); // Send to first N contacts for testing
   const [pagination, setPagination] = useState<PaginationMeta>({
@@ -65,9 +65,12 @@ const Campaigns: React.FC = () => {
       await createCampaign({
         name: form.name,
         message: form.message,
+        message_ar: form.message_ar || undefined,
+        message_ku: form.message_ku || undefined,
+        message_en: form.message_en || undefined,
         recipients: [],
       } as any);
-      setForm({ name: '', message: '' });
+      setForm({ name: '', message: '', message_ar: '', message_ku: '', message_en: '' });
       setShowModal(false);
       loadCampaigns();
     } catch (e: any) {
@@ -411,11 +414,43 @@ const Campaigns: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message (Default)</label>
                 <textarea
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  rows={4}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Hello {{name}}, check out our new offers!"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message (Arabic) - Optional</label>
+                <textarea
+                  value={form.message_ar}
+                  onChange={(e) => setForm({ ...form, message_ar: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="مرحبا {{name}}، تحقق من عروضنا الجديدة!"
+                  dir="rtl"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message (Kurdish) - Optional</label>
+                <textarea
+                  value={form.message_ku}
+                  onChange={(e) => setForm({ ...form, message_ku: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="سڵاو {{name}}، پێشکەشکردنەکانمان ببینە!"
+                  dir="rtl"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message (English) - Optional</label>
+                <textarea
+                  value={form.message_en}
+                  onChange={(e) => setForm({ ...form, message_en: e.target.value })}
+                  rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="Hello {{name}}, check out our new offers!"
                 />

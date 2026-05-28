@@ -39,6 +39,9 @@ export interface Campaign {
   id?: string;
   name: string;
   message: string;
+  message_ar?: string;
+  message_ku?: string;
+  message_en?: string;
   template_id?: string;
   recipients: string[];
   status: 'draft' | 'scheduled' | 'queued' | 'sending' | 'paused' | 'completed' | 'failed';
