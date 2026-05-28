@@ -41,7 +41,7 @@ export interface Campaign {
   message: string;
   template_id?: string;
   recipients: string[];
-  status: 'draft' | 'scheduled' | 'queued' | 'sending' | 'completed' | 'failed';
+  status: 'draft' | 'scheduled' | 'queued' | 'sending' | 'paused' | 'completed' | 'failed';
   scheduled_at?: string;
   sent_at?: string;
   completed_at?: string;

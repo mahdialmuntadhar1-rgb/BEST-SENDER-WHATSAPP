@@ -25,6 +25,31 @@ campaigns.get('/', async (c) => {
   });
 });
 
+// POST /api/campaigns/:id/pause - Pause a campaign
+campaigns.post('/:id/pause', async (c) => {
+  const db = new D1Client(c.env.DB);
+  const id = c.req.param('id');
+
+  const campaign = await db.getCampaignById(id);
+
+  if (!campaign) {
+    return c.json({ error: 'Campaign not found' }, 404);
+  }
+
+  if (campaign.status !== 'sending' && campaign.status !== 'queued') {
+    return c.json({ error: 'Campaign is not currently sending or queued' }, 400);
+  }
+
+  const updated = await db.updateCampaign(id, {
+    status: 'paused',
+  });
+
+  return c.json({
+    success: true,
+    campaign: updated,
+  });
+});
+
 // POST /api/campaigns - Create a campaign
 campaigns.post('/', async (c) => {
   const db = new D1Client(c.env.DB);

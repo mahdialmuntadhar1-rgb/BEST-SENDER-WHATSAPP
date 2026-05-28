@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Send, Play, Trash2, X, AlertCircle, CheckCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCampaigns, createCampaign, sendCampaign, processCampaign, deleteCampaign, getStoredCredentials, sendTestMessage } from '../services/api';
+import { getCampaigns, createCampaign, sendCampaign, processCampaign, deleteCampaign, pauseCampaign, getStoredCredentials, sendTestMessage, getContacts } from '../services/api';
 import { PaginationMeta } from '../types';
 
 interface Campaign {
@@ -106,7 +106,14 @@ const Campaigns: React.FC = () => {
     setSendingId(id);
     try {
       // Step 1: Queue messages (API only, instant, crash-safe)
-      const queueRes = await sendCampaign(id.toString(), creds.apiKey, creds.instanceId, false);
+      let contactIds: string[] | undefined;
+      if (limitContacts) {
+        // Fetch first N contacts and pass their IDs
+        const contactsRes = await getContacts({ page: 1, limit: testLimit });
+        contactIds = contactsRes.contacts.filter(c => c.id).map(c => c.id!.toString());
+      }
+
+      const queueRes = await sendCampaign(id.toString(), creds.apiKey, creds.instanceId, false, contactIds);
       alert(`Queued ${queueRes.queued_count} messages. Starting send...`);
       loadCampaigns();
 
@@ -130,6 +137,16 @@ const Campaigns: React.FC = () => {
       alert(e.response?.data?.error || 'Failed to send campaign');
     } finally {
       setSendingId(null);
+    }
+  };
+
+  const handlePause = async (id: number) => {
+    try {
+      await pauseCampaign(id.toString());
+      alert('Campaign paused');
+      loadCampaigns();
+    } catch (e: any) {
+      alert(e.response?.data?.error || 'Failed to pause campaign');
     }
   };
 
@@ -196,6 +213,7 @@ const Campaigns: React.FC = () => {
       draft: 'bg-gray-100 text-gray-700',
       queued: 'bg-blue-100 text-blue-700',
       sending: 'bg-yellow-100 text-yellow-700',
+      paused: 'bg-purple-100 text-purple-700',
       completed: 'bg-green-100 text-green-700',
       failed: 'bg-red-100 text-red-700',
     };
@@ -287,10 +305,31 @@ const Campaigns: React.FC = () => {
                     <span className="ml-1">Send {testLimit}</span>
                   </button>
                   {(c.status === 'queued' || c.status === 'sending') && (
+                    <>
+                      <button
+                        onClick={() => handlePause(c.id)}
+                        className="flex items-center px-3 py-2 bg-gray-50 text-gray-600 rounded-md hover:bg-gray-100 transition-colors text-sm"
+                        title="Pause sending"
+                      >
+                        <Play className="h-4 w-4 rotate-90" />
+                        <span className="ml-1">Pause</span>
+                      </button>
+                      <button
+                        onClick={() => handleResume(c.id)}
+                        disabled={sendingId === c.id}
+                        className="flex items-center px-3 py-2 bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition-colors text-sm disabled:opacity-50"
+                        title="Resume sending"
+                      >
+                        {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                        <span className="ml-1">Resume</span>
+                      </button>
+                    </>
+                  )}
+                  {c.status === 'paused' && (
                     <button
                       onClick={() => handleResume(c.id)}
                       disabled={sendingId === c.id}
-                      className="flex items-center px-3 py-2 bg-orange-50 text-orange-600 rounded-md hover:bg-orange-100 transition-colors text-sm disabled:opacity-50"
+                      className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 transition-colors text-sm disabled:opacity-50"
                       title="Resume sending"
                     >
                       {sendingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}

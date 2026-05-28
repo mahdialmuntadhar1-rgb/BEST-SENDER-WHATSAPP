@@ -66,6 +66,11 @@ export const deleteCampaign = async (id: string): Promise<void> => {
   await api.delete(`/campaigns/${id}`);
 };
 
+export const pauseCampaign = async (id: string): Promise<any> => {
+  const response = await api.post(`/campaigns/${id}/pause`);
+  return response.data;
+};
+
 export const sendCampaign = async (
   id: string,
   apiKey?: string,
