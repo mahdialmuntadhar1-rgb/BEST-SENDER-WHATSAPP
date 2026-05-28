@@ -130,7 +130,7 @@ campaigns.post('/:id/send', async (c) => {
 
   // If specific contact IDs provided, filter to those
   if (contactIds && Array.isArray(contactIds) && contactIds.length > 0) {
-    contacts = contacts.filter(c => contactIds.includes(c.id));
+    contacts = contacts.filter(c => contactIds.includes(String(c.id)));
   }
 
   if (dryRun) {
